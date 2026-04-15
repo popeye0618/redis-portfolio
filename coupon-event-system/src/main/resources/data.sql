@@ -1,0 +1,1 @@
+INSERT INTO coupon_event (name, total_quantity, remaining_quantity) VALUES ('event1', 100, 100);
