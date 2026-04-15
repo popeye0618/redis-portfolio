@@ -5,14 +5,19 @@ import com.example.redisserver1.entity.CouponIssuance;
 import com.example.redisserver1.enums.IssuanceResult;
 import com.example.redisserver1.repository.CouponIssuanceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class CouponServiceV3 {
 
+    private final RedisTemplate<String, String> redisTemplate;
     private final CouponLuaScript couponLuaScript;
     private final CouponIssuanceRepository couponIssuanceRepository;
 
@@ -30,12 +35,20 @@ public class CouponServiceV3 {
     @Async
     @Transactional
     protected void saveAsync(Long eventId, Long userId) {
+        LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(10);
 
-        couponIssuanceRepository.save(
-            CouponIssuance.builder()
-                .eventId(eventId)
-                .userId(userId)
-                .build()
+        CouponIssuance issuance = couponIssuanceRepository.save(
+                CouponIssuance.builder()
+                        .eventId(eventId)
+                        .userId(userId)
+                        .expiredAt(expiredAt)
+                        .build()
+        );
+
+        redisTemplate.opsForValue().set(
+                "coupon:expire:" + issuance.getId(),
+                String.valueOf(issuance.getId()),
+                Duration.ofSeconds(10)
         );
     }
 }
