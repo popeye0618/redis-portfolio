@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>선착순 이벤트 처리 시스템 — Redis 완전정복 Project 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c10;--bg2:#111419;--bg3:#181c23;
+  --border:rgba(255,255,255,0.07);--border-bright:rgba(255,255,255,0.14);
+  --text:#e8eaf0;--muted:#7a8090;
+  --accent:#4f9eff;--green:#3ecf8e;--amber:#f5a623;--red:#ff5252;--purple:#b794f4;
+  --mono:'JetBrains Mono',monospace;--display:'Syne',sans-serif;--body:'Noto Sans KR',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.7;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,158,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,158,255,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrap{max-width:900px;margin:0 auto;padding:0 32px;position:relative;z-index:1;}
+header{padding:72px 0 56px;border-bottom:1px solid var(--border);}
+.eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--accent);}
+h1{font-family:var(--display);font-size:clamp(28px,5vw,46px);font-weight:800;line-height:1.15;letter-spacing:-.02em;margin-bottom:20px;color:#fff;}
+h1 span{color:var(--accent);}
+.desc{color:var(--muted);max-width:600px;margin-bottom:28px;}
+.tags{display:flex;flex-wrap:wrap;gap:8px;}
+.tag{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border-bright);color:var(--muted);background:var(--bg2);}
+section{padding:64px 0;border-bottom:1px solid var(--border);}
+section:last-child{border-bottom:none;}
+.sec-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:32px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+h2{font-family:var(--display);font-size:22px;font-weight:700;color:#fff;margin-bottom:14px;letter-spacing:-.01em;}
+p{color:var(--muted);line-height:1.8;}
+
+/* arch */
+.arch-box{background:var(--bg2);border:1px solid var(--border-bright);border-radius:12px;padding:36px;margin-top:24px;}
+
+/* problem grid */
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;}
+.pc.hot{border-color:rgba(255,82,82,.3);background:rgba(255,82,82,.04);}
+.badge{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;margin-bottom:12px;display:inline-block;letter-spacing:.08em;text-transform:uppercase;}
+.br{background:rgba(255,82,82,.15);color:var(--red);}
+.bg{background:rgba(62,207,142,.15);color:var(--green);}
+h3{font-family:var(--display);font-size:16px;font-weight:700;color:#fff;margin-bottom:10px;}
+.code{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:14px;font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--muted);overflow-x:auto;}
+.code .hl{color:var(--red);}
+.code .ok{color:var(--green);}
+.code .cm{color:rgba(122,128,144,.55);}
+.code .kw{color:var(--accent);}
+.code .num{color:var(--amber);}
+
+/* flow */
+.flow{display:flex;flex-direction:column;margin-top:8px;}
+.fi{display:grid;grid-template-columns:100px 1fr;gap:0 28px;}
+.fl{display:flex;flex-direction:column;align-items:center;padding-top:22px;}
+.dot{width:36px;height:36px;border-radius:50%;border:2px solid var(--border-bright);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);flex-shrink:0;z-index:1;}
+.dot.d1{border-color:rgba(255,82,82,.5);color:var(--red);}
+.dot.d2{border-color:rgba(245,166,35,.5);color:var(--amber);}
+.dot.d3{border-color:rgba(79,158,255,.5);color:var(--accent);}
+.dot.d4{border-color:rgba(62,207,142,.4);color:var(--green);}
+.dot.d5{border-color:rgba(183,148,244,.4);color:var(--purple);}
+.fl-line{flex:1;width:1px;background:var(--border);margin:4px 0;min-height:20px;}
+.fr{padding:18px 0 36px;}
+.fv{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;}
+.fv.v1{color:var(--red);}.fv.v2{color:var(--amber);}.fv.v3{color:var(--accent);}.fv.v4{color:var(--green);}.fv.v5{color:var(--purple);}
+.ft{font-family:var(--display);font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;}
+.fb{color:var(--muted);font-size:14px;line-height:1.8;}
+.thought{background:var(--bg2);border-left:3px solid var(--border-bright);border-radius:0 8px 8px 0;padding:14px 18px;margin:12px 0;font-size:14px;color:var(--muted);font-style:italic;}
+.thought.t1{border-left-color:rgba(255,82,82,.5);}
+.thought.t2{border-left-color:rgba(245,166,35,.5);}
+.thought.t3{border-left-color:rgba(79,158,255,.5);}
+.thought.t4{border-left-color:rgba(62,207,142,.4);}
+.thought.t5{border-left-color:rgba(183,148,244,.4);}
+.dbox{background:var(--bg3);border:1px solid var(--border-bright);border-radius:8px;padding:14px 18px;margin:12px 0;}
+.dlabel{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.mrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.m{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:var(--mono);font-size:12px;}
+.mv{color:#fff;font-weight:500;}
+.ml{color:var(--muted);font-size:10px;margin-top:1px;}
+
+/* perf table */
+.pt{width:100%;border-collapse:collapse;margin-top:24px;font-size:13px;}
+.pt th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);text-align:left;padding:10px 16px;border-bottom:1px solid var(--border);font-weight:500;}
+.pt td{padding:14px 16px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:middle;}
+.pt tr:last-child td{border-bottom:none;}
+.pt tr:hover td{background:rgba(255,255,255,.02);}
+.bar-wrap{display:flex;align-items:center;gap:10px;}
+.bar{height:6px;border-radius:3px;background:var(--border);width:120px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;}
+.ok-badge{font-family:var(--mono);font-size:11px;color:var(--green);display:inline-flex;align-items:center;gap:5px;}
+.ok-badge::before{content:'●';font-size:8px;}
+.fail-badge{font-family:var(--mono);font-size:11px;color:var(--red);display:inline-flex;align-items:center;gap:5px;}
+.fail-badge::before{content:'●';font-size:8px;}
+
+/* takeaways */
+.tg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px;}
+.tc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:22px;}
+.tnum{font-family:var(--mono);font-size:20px;margin-bottom:12px;}
+.tc h3{font-size:14px;margin-bottom:8px;}
+.tc p{font-size:13px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.fu{animation:fadeUp .5s ease both;}
+.fu:nth-child(2){animation-delay:.1s;}
+.fu:nth-child(3){animation-delay:.2s;}
+@media(max-width:680px){.pg,.tg{grid-template-columns:1fr;}.fi{grid-template-columns:64px 1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+<div class="wrap">
+  <div class="eyebrow">Redis 완전정복 · Project 01</div>
+  <h1>선착순 이벤트<br><span>처리 시스템</span></h1>
+  <p class="desc">1만 명이 동시에 쿠폰을 요청했을 때, 재고 정합성을 어떻게 지킬 수 있는가. Race Condition을 직접 재현하고, 세 가지 접근으로 해결까지의 사고 과정을 담았습니다.</p>
+  <div class="tags">
+    <span class="tag">Java 17</span><span class="tag">Spring Boot 3.x</span><span class="tag">Redis 7.2</span>
+    <span class="tag">Redisson 3.27.2</span><span class="tag">MySQL 8.0</span><span class="tag">JMeter 5.6.3</span>
+    <span class="tag">Docker Compose</span>
+  </div>
+</div>
+</header>
+
+<!-- ARCHITECTURE -->
+<section>
+<div class="wrap">
+  <div class="sec-label">Architecture</div>
+  <h2>전체 시스템 구조</h2>
+  <p>클라이언트 요청은 API 서버를 거쳐 Redis에서 정합성을 보장하고 DB에 비동기로 저장됩니다. 쿠폰 만료는 Keyspace Notification 이벤트로 처리합니다.</p>
+  <div class="arch-box">
+    <svg width="100%" viewBox="0 0 820 310" xmlns="http://www.w3.org/2000/svg" style="font-family:'JetBrains Mono',monospace;">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#4f9eff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#3ecf8e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#b794f4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <!-- Clients -->
+      <rect x="10" y="44" width="105" height="36" rx="6" fill="#181c23" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <text x="62" y="67" text-anchor="middle" fill="#7a8090" font-size="11">Client ×N</text>
+      <!-- arr client→api -->
+      <line x1="115" y1="62" x2="162" y2="62" stroke="#4f9eff" stroke-width="1" marker-end="url(#a1)"/>
+      <text x="138" y="56" text-anchor="middle" fill="#4f9eff" font-size="9">10k+ req/s</text>
+      <!-- API Server -->
+      <rect x="162" y="26" width="148" height="72" rx="8" fill="#181c23" stroke="rgba(79,158,255,0.3)" stroke-width="1"/>
+      <text x="236" y="52" text-anchor="middle" fill="#fff" font-size="12" font-weight="500">API Server</text>
+      <text x="236" y="68" text-anchor="middle" fill="#7a8090" font-size="10">Spring Boot</text>
+      <text x="236" y="84" text-anchor="middle" fill="#4f9eff" font-size="9">V1 · V2 · V3 · V4 · V5</text>
+      <!-- arr api→redis -->
+      <line x1="310" y1="62" x2="366" y2="62" stroke="#4f9eff" stroke-width="1" marker-end="url(#a1)"/>
+      <!-- Redis container -->
+      <rect x="366" y="10" width="250" height="272" rx="10" fill="rgba(79,158,255,0.03)" stroke="rgba(79,158,255,0.18)" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="491" y="30" text-anchor="middle" fill="#4f9eff" font-size="11" letter-spacing="1">REDIS 7.2</text>
+      <!-- Redis keys -->
+      <rect x="380" y="42" width="222" height="34" rx="5" fill="#111419" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <text x="394" y="55" fill="#f5a623" font-size="10">coupon:stock:{eventId}</text>
+      <text x="394" y="68" fill="#7a8090" font-size="9">String — 재고 수량 (V3~)</text>
+      <rect x="380" y="84" width="222" height="34" rx="5" fill="#111419" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <text x="394" y="97" fill="#f5a623" font-size="10">coupon:issued:{eventId}</text>
+      <text x="394" y="110" fill="#7a8090" font-size="9">Set — 발급자 목록 (V3~)</text>
+      <rect x="380" y="126" width="222" height="34" rx="5" fill="#111419" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <text x="394" y="139" fill="#f5a623" font-size="10">coupon:lock:{eventId}</text>
+      <text x="394" y="152" fill="#7a8090" font-size="9">Lock — Redisson 분산 락 (V2)</text>
+      <rect x="380" y="168" width="222" height="34" rx="5" fill="#111419" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <text x="394" y="181" fill="#f5a623" font-size="10">coupon:queue:{eventId}</text>
+      <text x="394" y="194" fill="#7a8090" font-size="9">Sorted Set — 대기열 (V4)</text>
+      <rect x="380" y="210" width="222" height="34" rx="5" fill="#111419" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <text x="394" y="223" fill="#f5a623" font-size="10">coupon:expire:{issuanceId}</text>
+      <text x="394" y="236" fill="#7a8090" font-size="9">TTL — 만료 감지 (V5)</text>
+      <!-- arr api→db async -->
+      <line x1="236" y1="98" x2="236" y2="230" stroke="#3ecf8e" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+      <text x="248" y="175" fill="#3ecf8e" font-size="9">@Async</text>
+      <!-- DB -->
+      <rect x="162" y="230" width="148" height="52" rx="8" fill="#181c23" stroke="rgba(62,207,142,0.25)" stroke-width="1"/>
+      <text x="236" y="252" text-anchor="middle" fill="#fff" font-size="12" font-weight="500">MySQL 8.0</text>
+      <text x="236" y="270" text-anchor="middle" fill="#7a8090" font-size="9">coupon_issuance</text>
+      <!-- keyspace notification -->
+      <path d="M491 244 L491 272 L638 272 L638 282" fill="none" stroke="#b794f4" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a3)"/>
+      <text x="564" y="268" text-anchor="middle" fill="#b794f4" font-size="9">expired event</text>
+      <!-- Listener -->
+      <rect x="638" y="282" width="170" height="26" rx="5" fill="#181c23" stroke="rgba(183,148,244,0.3)" stroke-width="1"/>
+      <text x="723" y="300" text-anchor="middle" fill="#b794f4" font-size="10">ExpirationListener</text>
+    </svg>
+  </div>
+</div>
+</section>
+
+<!-- PROBLEM -->
+<section>
+<div class="wrap">
+  <div class="sec-label">Problem</div>
+  <h2>문제 정의 — 왜 동시성 제어가 필요한가</h2>
+  <p>단건 요청에서는 문제가 드러나지 않습니다. 수백 개의 요청이 밀리초 단위로 동시에 들어올 때만 Race Condition이 발생합니다.</p>
+  <div class="pg">
+    <div class="pc hot fu">
+      <span class="badge br">Race Condition</span>
+      <h3>Lost Update 패턴</h3>
+      <div class="code">
+<span class="cm">// 재고 = 1, 두 쓰레드 동시 진입</span>
+Thread A: GET remaining → <span class="num">1</span>
+Thread B: GET remaining → <span class="num">1</span>  <span class="hl">← 같은 값</span>
+
+Thread A: <span class="num">1</span> > 0 통과 → decrease()
+Thread B: <span class="num">1</span> > 0 통과 → decrease()
+
+<span class="hl">결과: remaining = -1 (초과 발급)</span>
+      </div>
+    </div>
+    <div class="pc fu">
+      <span class="badge br">JMeter 재현 · 재고 100 / 동시 200명</span>
+      <h3>V1 실행 결과</h3>
+      <div class="code">
+<span class="cm">-- 발급 건수</span>
+<span class="kw">SELECT</span> COUNT(*) FROM coupon_issuance;
+<span class="hl">→ 200건  (100건 초과 발급)</span>
+
+<span class="cm">-- 잔여 재고</span>
+<span class="kw">SELECT</span> remaining_quantity FROM coupon_event;
+<span class="hl">→ 80  (0 이어야 정상)</span>
+
+<span class="cm">-- remaining=80 의미:
+-- 180개 트랜잭션이 서로 덮어쓰기
+-- → 차감 결과 유실 (Lost Update)</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- THOUGHT PROCESS -->
+<section>
+<div class="wrap">
+  <div class="sec-label">Thought Process</div>
+  <h2>사고 흐름 — 문제 인식부터 해결까지</h2>
+  <p style="margin-bottom:40px;">각 버전은 이전 버전의 한계를 분석한 결과로 선택했습니다. 더 나은 기술을 찾은 게 아니라, 왜 이 방법이 필요한지를 먼저 이해했습니다.</p>
+
+  <div class="flow">
+
+    <div class="fi">
+      <div class="fl"><div class="dot d1">V1</div><div class="fl-line"></div></div>
+      <div class="fr">
+        <div class="fv v1">Step 1 — 문제 재현</div>
+        <div class="ft">동기화 없는 버전 — 일부러 망가뜨리기</div>
+        <div class="thought t1">"해결책을 바로 적용하기 전에, 문제가 실제로 발생하는지 수치로 확인해야 한다고 생각했습니다. 추측이 아닌 증거가 필요했습니다."</div>
+        <p class="fb">아무 처리 없이 구현 후 JMeter로 동시 200명 요청을 쏘아 Race Condition을 재현했습니다. 이 단계의 목적은 해결이 아니라 <strong style="color:#fff;">문제의 존재를 수치로 증명</strong>하는 것이었습니다.</p>
+        <div class="mrow">
+          <div class="m"><div class="mv" style="color:var(--red)">200건</div><div class="ml">발급 건수 (초과)</div></div>
+          <div class="m"><div class="mv" style="color:var(--red)">80</div><div class="ml">remaining (비정상)</div></div>
+          <div class="m"><div class="mv" style="color:var(--red)">실패</div><div class="ml">정합성</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fi">
+      <div class="fl"><div class="dot d2">V2</div><div class="fl-line"></div></div>
+      <div class="fr">
+        <div class="fv v2">Step 2 — 분산 환경 고려</div>
+        <div class="ft">Redisson 분산 락 — synchronized가 아닌 이유</div>
+        <div class="thought t2">"처음엔 synchronized 키워드를 쓰면 되지 않을까 생각했습니다. 그런데 서버가 2대 이상이면 JVM이 달라서 의미가 없다는 걸 깨달았습니다. 처음부터 분산 환경을 가정해야 했습니다."</div>
+        <div class="dbox">
+          <div class="dlabel">의사결정 근거</div>
+          <p class="fb" style="font-size:13px;"><span style="color:#fff;">synchronized</span>는 단일 JVM 내에서만 동작합니다. Redis 분산 락은 네트워크 너머 모든 서버가 공유하므로 서버 대수와 무관하게 동작합니다. 추가로 <span style="color:#fff;">락의 생명주기가 트랜잭션을 감싸야 한다</span>는 점 — 커밋 전 락 해제 시 다음 요청이 변경 전 데이터를 읽는 문제 — 을 직접 실험으로 확인했습니다.</p>
+        </div>
+        <div class="mrow">
+          <div class="m"><div class="mv" style="color:var(--green)">100건</div><div class="ml">발급 건수 (정확)</div></div>
+          <div class="m"><div class="mv" style="color:var(--amber)">58.4/s</div><div class="ml">Throughput</div></div>
+          <div class="m"><div class="mv" style="color:var(--red)">2,501ms</div><div class="ml">평균 응답시간</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fi">
+      <div class="fl"><div class="dot d3">V3</div><div class="fl-line"></div></div>
+      <div class="fr">
+        <div class="fv v3">Step 3 — 구조적 개선</div>
+        <div class="ft">Lua Script — 락 자체를 없애다</div>
+        <div class="thought t3">"V2의 2,501ms 응답시간 원인을 분석했습니다. 문제는 '락 설정이 잘못됐다'가 아니라 '락을 기다리는 구조 자체'였습니다. 락 없이도 원자성을 보장할 수 있다면 대기 자체를 없앨 수 있습니다."</div>
+        <div class="dbox">
+          <div class="dlabel">의사결정 근거</div>
+          <p class="fb" style="font-size:13px;">Redis는 단일 쓰레드로 명령어를 처리합니다. Lua Script는 Redis 내부에서 실행되므로 스크립트 실행 중 다른 명령어가 끼어들 수 없습니다. 락 없이도 원자성이 보장됩니다. 또한 DB 저장을 <span style="color:#fff;">@Async로 응답 경로에서 분리</span>하여 응답시간을 추가로 단축했습니다.</p>
+        </div>
+        <div class="mrow">
+          <div class="m"><div class="mv" style="color:var(--green)">100건</div><div class="ml">발급 건수 (정확)</div></div>
+          <div class="m"><div class="mv" style="color:var(--accent)">212.8/s</div><div class="ml">Throughput</div></div>
+          <div class="m"><div class="mv" style="color:var(--green)">762ms</div><div class="ml">평균 응답시간</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fi">
+      <div class="fl"><div class="dot d4">V4</div><div class="fl-line"></div></div>
+      <div class="fr">
+        <div class="fv v4">Step 4 — 트래픽 완충</div>
+        <div class="ft">Sorted Set 대기열 — 급격한 트래픽 흡수</div>
+        <div class="thought t4">"V3는 빠르지만 극단적 트래픽에서 Redis에도 부하가 집중됩니다. score를 요청 시각으로 쓰면 Sorted Set이 자동으로 선착순을 보장해줍니다."</div>
+        <p class="fb">ZADD로 등록 → 순번 즉시 반환 → 스케줄러가 ZPOPMIN으로 순서대로 꺼내 Lua Script 실행. 트래픽 스파이크를 Redis 레벨에서 흡수합니다.</p>
+      </div>
+    </div>
+
+    <div class="fi">
+      <div class="fl"><div class="dot d5">V5</div></div>
+      <div class="fr">
+        <div class="fv v5">Step 5 — 라이프사이클 관리</div>
+        <div class="ft">TTL + Keyspace Notification — 만료를 이벤트로</div>
+        <div class="thought t5">"만료를 스케줄러로 처리하면 매 분마다 전체 DB를 스캔해야 합니다. Redis가 TTL 만료를 직접 알려준다면, 만료된 쿠폰만 정확히 처리할 수 있습니다."</div>
+        <p class="fb"><code style="font-family:var(--mono);font-size:12px;color:var(--purple)">coupon:expire:{issuanceId}</code> 키에 TTL을 설정하면 만료 순간 Redis가 <code style="font-family:var(--mono);font-size:12px;color:var(--purple)">__keyevent@0__:expired</code> 채널에 키 이름을 발행합니다. 리스너는 폴링 없이 이벤트만 수신합니다. value가 아닌 <strong style="color:#fff;">키 이름 자체에 issuanceId를 포함</strong>시켜 대상을 식별합니다.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- PERFORMANCE -->
+<section>
+<div class="wrap">
+  <div class="sec-label">Result</div>
+  <h2>성능 비교</h2>
+  <p>재고 100개 / 동시 요청 200명 / JMeter Ramp-up 0초 기준</p>
+  <table class="pt">
+    <thead>
+      <tr>
+        <th>버전</th><th>방식</th><th>정합성</th><th>Throughput</th><th>평균 응답시간</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--red)">V1</span></td>
+        <td style="color:var(--text)">동기화 없음</td>
+        <td><span class="fail-badge">실패</span></td>
+        <td><span style="font-family:var(--mono);color:var(--muted)">—</span></td>
+        <td><span style="font-family:var(--mono);color:var(--muted)">—</span></td>
+      </tr>
+      <tr>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--amber)">V2</span></td>
+        <td style="color:var(--text)">Redisson 분산 락</td>
+        <td><span class="ok-badge">성공</span></td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar"><div class="bar-fill" style="width:27%;background:var(--amber);"></div></div>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--amber)">58.4/s</span>
+          </div>
+        </td>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--red)">2,501ms</span></td>
+      </tr>
+      <tr>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent)">V3</span></td>
+        <td style="color:var(--text)">Redis Lua Script</td>
+        <td><span class="ok-badge">성공</span></td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar"><div class="bar-fill" style="width:100%;background:var(--accent);"></div></div>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--accent)">212.8/s</span>
+          </div>
+        </td>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--green)">762ms</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top:16px;padding:18px 22px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+    <p style="font-size:13px;">V2 → V3 전환으로 <span style="color:#fff;font-family:var(--mono);">TPS 3.6배 향상 (58.4 → 212.8/s)</span>, <span style="color:#fff;font-family:var(--mono);">응답시간 70% 단축 (2,501ms → 762ms)</span>. 락 대기 구조 제거 + @Async DB 분리의 복합 효과입니다.</p>
+  </div>
+</div>
+</section>
+
+<!-- TAKEAWAYS -->
+<section>
+<div class="wrap">
+  <div class="sec-label">Key Takeaways</div>
+  <h2>핵심 인사이트</h2>
+  <div class="tg">
+    <div class="tc fu">
+      <div class="tnum" style="color:var(--red)">01</div>
+      <h3>문제를 먼저 재현한다</h3>
+      <p>해결책보다 먼저, 문제가 실제로 발생하는지 수치로 증명하는 것이 출발점입니다.</p>
+    </div>
+    <div class="tc fu">
+      <div class="tnum" style="color:var(--amber)">02</div>
+      <h3>분산 환경을 전제로 설계한다</h3>
+      <p>단일 서버에서만 동작하는 해결책은 진짜 해결책이 아닙니다. 처음부터 서버 N대를 가정해야 합니다.</p>
+    </div>
+    <div class="tc fu">
+      <div class="tnum" style="color:var(--accent)">03</div>
+      <h3>증상이 아닌 구조를 바꾼다</h3>
+      <p>V2의 느린 응답은 락 설정의 문제가 아니었습니다. 대기 구조 자체를 제거하는 것이 해답이었습니다.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+</body>
+</html>
