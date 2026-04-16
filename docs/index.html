@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redis 완전정복 — 포트폴리오</title>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c10;
+            --bg2: #111419;
+            --bg3: #181c23;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-bright: rgba(255, 255, 255, 0.14);
+            --text: #e8eaf0;
+            --muted: #7a8090;
+            --accent: #4f9eff;
+            --green: #3ecf8e;
+            --amber: #f5a623;
+            --red: #ff5252;
+            --purple: #b794f4;
+            --mono: 'JetBrains Mono', monospace;
+            --display: 'Pretendard', sans-serif;
+            --body: 'Pretendard', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            font-size: 15px;
+            line-height: 1.7;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(79, 158, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(79, 158, 255, 0.025) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* noise overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: .4;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrap {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* NAV */
+        nav {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(10, 12, 16, 0.92);
+            backdrop-filter: blur(12px);
+            z-index: 100;
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-logo {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-logo::before {
+            content: '';
+            display: block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-links a {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            text-decoration: none;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            transition: color .2s;
+        }
+
+        .nav-links a:hover {
+            color: #fff;
+        }
+
+        /* HERO */
+        .hero {
+            padding: 100px 0 80px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .eyebrow {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--accent);
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .eyebrow::before {
+            content: '';
+            display: block;
+            width: 24px;
+            height: 1px;
+            background: var(--accent);
+        }
+
+        h1 {
+            font-family: var(--display);
+            font-size: clamp(36px, 7vw, 64px);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -.03em;
+            color: #fff;
+            margin-bottom: 28px;
+        }
+
+        h1 .line2 {
+            color: var(--accent);
+        }
+
+        .hero-desc {
+            color: var(--muted);
+            max-width: 560px;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 40px;
+        }
+
+        /* STACK CHIPS */
+        .stack-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 48px;
+        }
+
+        .chip {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 100px;
+            border: 1px solid var(--border-bright);
+            color: var(--muted);
+            background: var(--bg2);
+            transition: all .2s;
+        }
+
+        /* STATS BAR */
+        .stats {
+            display: flex;
+            gap: 0;
+            margin-top: 40px;
+        }
+
+        .stat {
+            flex: 1;
+            padding: 20px 24px;
+            border: 1px solid var(--border);
+            border-right: none;
+            background: var(--bg2);
+        }
+
+        .stat:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .stat:last-child {
+            border-right: 1px solid var(--border);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .stat-val {
+            font-family: var(--display);
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .stat-lbl {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-top: 6px;
+        }
+
+        /* PROJECTS */
+        .projects {
+            padding: 72px 0;
+        }
+
+        .sec-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sec-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .project-card {
+            display: block;
+            text-decoration: none;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 36px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color .25s, transform .2s;
+            cursor: pointer;
+        }
+
+        .project-card:hover {
+            border-color: var(--border-bright);
+            transform: translateY(-2px);
+        }
+
+        .project-card.done:hover {
+            border-color: var(--card-accent);
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--card-accent, transparent);
+            border-radius: 14px 14px 0 0;
+            opacity: 0;
+            transition: opacity .25s;
+        }
+
+        .project-card.done::before {
+            opacity: 1;
+        }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-num {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .15em;
+        }
+
+        .card-status {
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 100px;
+            letter-spacing: .06em;
+        }
+
+        .status-done {
+            background: rgba(62, 207, 142, .12);
+            color: var(--green);
+            border: 1px solid rgba(62, 207, 142, .2);
+        }
+
+        .status-wip {
+            background: rgba(245, 166, 35, .1);
+            color: var(--amber);
+            border: 1px solid rgba(245, 166, 35, .2);
+        }
+
+        .status-plan {
+            background: rgba(122, 128, 144, .1);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-family: var(--display);
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: -.01em;
+        }
+
+        .card-sub {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 24px;
+            line-height: 1.7;
+        }
+
+        .card-techs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .ct {
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 3px 9px;
+            border-radius: 4px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+
+        .card-metrics {
+            display: flex;
+            gap: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .cm {
+            font-size: 13px;
+        }
+
+        .cm-val {
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .cm-lbl {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .card-arrow {
+            position: absolute;
+            bottom: 36px;
+            right: 36px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .25s;
+        }
+
+        .project-card:hover .card-arrow {
+            border-color: var(--card-accent, var(--accent));
+            background: rgba(79, 158, 255, .08);
+        }
+
+        .card-arrow svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--muted);
+            transition: stroke .25s;
+        }
+
+        .project-card:hover .card-arrow svg {
+            stroke: var(--card-accent, var(--accent));
+        }
+
+        /* coming soon overlay */
+        .card-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 12, 16, .7);
+            backdrop-filter: blur(2px);
+            border-radius: 14px;
+            gap: 10px;
+        }
+
+        .overlay-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border-radius: 100px;
+            border: 1px solid var(--border-bright);
+            color: var(--muted);
+        }
+
+        .overlay-plan {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.6;
+        }
+
+        /* FOOTER */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .foot-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .foot-note {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* ANIMATIONS */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+
+        .fu {
+            animation: fadeUp .6s ease both;
+        }
+
+        .fu1 {
+            animation-delay: .05s;
+        }
+
+        .fu2 {
+            animation-delay: .15s;
+        }
+
+        .fu3 {
+            animation-delay: .25s;
+        }
+
+        .fu4 {
+            animation-delay: .35s;
+        }
+
+        @media (max-width: 640px) {
+            .stats {
+                flex-wrap: wrap;
+            }
+
+            .stat {
+                flex: 1 0 45%;
+                border-right: 1px solid var(--border);
+            }
+
+            .stat:nth-child(odd) {
+                border-radius: 0;
+            }
+
+            .card-metrics {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <div class="wrap">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Redis 완전정복</a>
+            <div class="nav-links">
+                <a href="project1.html">Project 1</a>
+                <a href="project2.html">Project 2</a>
+                <a href="project3.html">Project 3</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+    <div class="wrap">
+        <div class="eyebrow fu">포트폴리오 · Redis Deep Dive</div>
+        <h1 class="fu fu1">단순한 캐시가 아닌,<br><span class="line2">자료구조 서버로서의 Redis</span></h1>
+        <p class="hero-desc fu fu2">
+            Redis를 단순 캐싱 도구가 아닌 분산 시스템 문제 해결 도구로 사용합니다.
+            동시성 제어, 실시간 랭킹, 이벤트 파이프라인까지 세 개 프로젝트로
+            Redis가 풀 수 있는 문제의 스펙트럼을 직접 구현했습니다.
+        </p>
+        <div class="stack-row fu fu3">
+            <span class="chip">Java 21</span>
+            <span class="chip">Spring Boot 4.x</span>
+            <span class="chip">Redis 8.0</span>
+            <span class="chip">Redisson 4.0.0</span>
+            <span class="chip">MySQL 8.0</span>
+            <span class="chip">JMeter 5.6.3</span>
+            <span class="chip">Docker Compose</span>
+        </div>
+        <div class="stats fu fu4">
+            <div class="stat">
+                <div class="stat-val">3</div>
+                <div class="stat-lbl">Projects</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val" style="color:var(--accent)">5+</div>
+                <div class="stat-lbl">Redis 자료구조</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val" style="color:var(--green)">3.6×</div>
+                <div class="stat-lbl">TPS 개선 (P1)</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val" style="color:var(--amber)">70%</div>
+                <div class="stat-lbl">응답시간 단축 (P1)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PROJECTS -->
+<div class="projects">
+    <div class="wrap">
+        <div class="sec-label">Projects</div>
+
+        <!-- Project 1 -->
+        <a href="project1.html" class="project-card done fu" style="--card-accent:var(--accent);">
+            <div class="card-top">
+                <span class="card-num">PROJECT 01</span>
+                <span class="card-status status-done">완료</span>
+            </div>
+            <div class="card-title">선착순 이벤트 처리 시스템</div>
+            <p class="card-sub">
+                1만 명이 동시에 쿠폰을 요청했을 때 재고 정합성을 어떻게 지킬 수 있는가.
+                Race Condition을 직접 재현하고 Redisson 분산 락 → Lua Script로 단계적으로 해결합니다.
+            </p>
+            <div class="card-techs">
+                <span class="ct">Redisson RLock</span>
+                <span class="ct">Lua Script</span>
+                <span class="ct">Sorted Set 대기열</span>
+                <span class="ct">TTL + Keyspace Notification</span>
+                <span class="ct">JMeter 부하 테스트</span>
+            </div>
+            <div class="card-metrics">
+                <div class="cm">
+                    <div class="cm-val" style="color:var(--green)">정합성 보장</div>
+                    <div class="cm-lbl">Race Condition 해결</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val" style="color:var(--accent)">212.8/s</div>
+                    <div class="cm-lbl">최종 TPS (V3)</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val" style="color:var(--green)">762ms</div>
+                    <div class="cm-lbl">평균 응답시간 (V3)</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val">V1 → V3</div>
+                    <div class="cm-lbl">TPS 3.6배 · 응답 70% ↓</div>
+                </div>
+            </div>
+            <div class="card-arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Project 2 -->
+        <a href="project2.html" class="project-card fu fu1" style="--card-accent:var(--amber);">
+            <div class="card-top">
+                <span class="card-num">PROJECT 02</span>
+                <span class="card-status status-plan">예정</span>
+            </div>
+            <div class="card-title">실시간 게임 랭킹 시스템</div>
+            <p class="card-sub">
+                수백만 사용자의 점수를 실시간으로 집계하고 순위를 조회합니다.
+                Sorted Set의 O(log N) 특성과 Rate Limiting으로 대용량 트래픽을 처리합니다.
+            </p>
+            <div class="card-techs">
+                <span class="ct">Sorted Set 점수 집계</span>
+                <span class="ct">ZRANGEBYSCORE</span>
+                <span class="ct">Sliding Window Rate Limiting</span>
+                <span class="ct">TTL + Keyspace Notification</span>
+            </div>
+            <div class="card-metrics">
+                <div class="cm">
+                    <div class="cm-val" style="color:var(--amber)">O(log N)</div>
+                    <div class="cm-lbl">랭킹 조회 복잡도</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val">실시간</div>
+                    <div class="cm-lbl">점수 반영</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val">시즌 랭킹</div>
+                    <div class="cm-lbl">TTL 자동 초기화</div>
+                </div>
+            </div>
+            <div class="card-overlay">
+                <span class="overlay-label">Coming Soon</span>
+                <p class="overlay-plan">Sorted Set · ZRANGEBYSCORE · Rate Limiting · Keyspace Notification</p>
+            </div>
+        </a>
+
+        <!-- Project 3 -->
+        <a href="project3.html" class="project-card fu fu2" style="--card-accent:var(--purple);">
+            <div class="card-top">
+                <span class="card-num">PROJECT 03</span>
+                <span class="card-status status-plan">예정</span>
+            </div>
+            <div class="card-title">실시간 알림 · 이벤트 파이프라인</div>
+            <p class="card-sub">
+                Redis Stream과 Consumer Group으로 Kafka 없이 이벤트 파이프라인을 구축합니다.
+                Pub/Sub → WebSocket 브릿지로 실시간 알림을 구현합니다.
+            </p>
+            <div class="card-techs">
+                <span class="ct">Redis Stream</span>
+                <span class="ct">Consumer Group</span>
+                <span class="ct">Pub/Sub → WebSocket</span>
+                <span class="ct">Pending Entry List</span>
+                <span class="ct">XACK / XDEL</span>
+            </div>
+            <div class="card-metrics">
+                <div class="cm">
+                    <div class="cm-val" style="color:var(--purple)">At-least-once</div>
+                    <div class="cm-lbl">메시지 전달 보장</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val">실시간</div>
+                    <div class="cm-lbl">WebSocket 알림</div>
+                </div>
+                <div class="cm">
+                    <div class="cm-val">재처리</div>
+                    <div class="cm-lbl">PEL 기반 복구</div>
+                </div>
+            </div>
+            <div class="card-overlay">
+                <span class="overlay-label">Coming Soon</span>
+                <p class="overlay-plan">Redis Stream · Consumer Group · WebSocket · Pending Entry List</p>
+            </div>
+        </a>
+
+    </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+    <div class="wrap">
+        <div class="foot-inner">
+            <span class="foot-note">Redis 완전정복 — Java 21 · Spring Boot 4.x · Redis 8.0</span>
+            <span class="foot-note" style="color:rgba(122,128,144,.5);">Portfolio</span>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
