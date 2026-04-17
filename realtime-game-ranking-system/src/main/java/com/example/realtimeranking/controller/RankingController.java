@@ -1,8 +1,6 @@
 package com.example.realtimeranking.controller;
 
-import com.example.realtimeranking.dto.MyRankingResponse;
-import com.example.realtimeranking.dto.RankingResponse;
-import com.example.realtimeranking.dto.ScoreRequest;
+import com.example.realtimeranking.dto.*;
 import com.example.realtimeranking.service.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,5 +39,32 @@ public class RankingController {
             @RequestParam Long userId
     ) {
         return ResponseEntity.ok(rankingService.getMyRanking(seasonId, userId));
+    }
+
+    @GetMapping("/seasons/{seasonId}/range")
+    public ResponseEntity<List<RankingResponse>> getRankersByScoreRange(
+            @PathVariable Long seasonId,
+            @RequestParam int minScore,
+            @RequestParam int maxScore
+    ) {
+        return ResponseEntity.ok(
+                rankingService.getRankersByScoreRange(seasonId, minScore, maxScore)
+        );
+    }
+
+    @GetMapping("/seasons/{seasonId}/me/percentile")
+    public ResponseEntity<MyPercentileResponse> getMyPercentile(
+            @PathVariable Long seasonId,
+            @RequestParam Long userId
+    ) {
+        return ResponseEntity.ok(rankingService.getMyPercentile(seasonId, userId));
+    }
+
+    @GetMapping("/seasons/{seasonId}/cutoff")
+    public ResponseEntity<PercentileCutoffResponse> getPercentileCutoff(
+            @PathVariable Long seasonId,
+            @RequestParam double percentile
+    ) {
+        return ResponseEntity.ok(rankingService.getPercentileCutoff(seasonId, percentile));
     }
 }

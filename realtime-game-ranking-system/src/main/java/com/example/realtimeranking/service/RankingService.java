@@ -1,6 +1,8 @@
 package com.example.realtimeranking.service;
 
+import com.example.realtimeranking.dto.MyPercentileResponse;
 import com.example.realtimeranking.dto.MyRankingResponse;
+import com.example.realtimeranking.dto.PercentileCutoffResponse;
 import com.example.realtimeranking.dto.RankingResponse;
 import com.example.realtimeranking.entity.GameScore;
 import com.example.realtimeranking.exception.RateLimitExceededException;
@@ -85,6 +87,55 @@ public class RankingService {
                 .rank(rank)
                 .score(score != null ? score.intValue() : 0)
                 .totalParticipants(total)
+                .build();
+    }
+
+    public MyPercentileResponse getMyPercentile(Long seasonId, Long userId) {
+        Long myRank = rankingRedisRepository.getMyRank(seasonId, userId);
+        Long total = rankingRedisRepository.getTotalCount(seasonId);
+
+        if (myRank == null || total == null || total == 0) {
+            throw new IllegalStateException("랭킹 정보가 없습니다.");
+        }
+
+        double percentile = Math.round((double) myRank / total * 1000) / 10.0;
+
+        return MyPercentileResponse.builder()
+                .rank(myRank)
+                .totalParticipants(total)
+                .topPercentile(percentile)
+                .build();
+    }
+
+    public List<RankingResponse> getRankersByScoreRange(
+            Long seasonId, double minScore, double maxScore
+    ) {
+        Set<ZSetOperations.TypedTuple<String>> result = rankingRedisRepository.getRankersByScoreRange(seasonId, minScore, maxScore);
+
+        List<RankingResponse> list = new ArrayList<>();
+        int rank = 1;
+        for (ZSetOperations.TypedTuple<String> entry : result) {
+            long userId = Long.parseLong(entry.getValue().replace("userId:", ""));
+            list.add(RankingResponse.builder()
+                    .rank(rank++)
+                    .userId(userId)
+                    .score(entry.getScore().intValue())
+                    .build()
+            );
+        }
+        return list;
+    }
+
+    public PercentileCutoffResponse getPercentileCutoff(Long seasonId, double percentile) {
+        Double cutoffScore = rankingRedisRepository.getPercentileScore(seasonId, percentile);
+        Long count = rankingRedisRepository.countByScoreRange(
+                seasonId, cutoffScore != null ? cutoffScore : 0, Double.MAX_VALUE
+        );
+
+        return PercentileCutoffResponse.builder()
+                .percentile(percentile)
+                .cutoffScore(cutoffScore != null ? cutoffScore.intValue() : 0)
+                .qualifiedCount(count)
                 .build();
     }
 }

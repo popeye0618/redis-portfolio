@@ -42,4 +42,33 @@ public class RankingRedisRepository {
     public Long getTotalCount(Long seasonId) {
         return redisTemplate.opsForZSet().zCard(key(seasonId));
     }
+
+    public Set<ZSetOperations.TypedTuple<String>> getRankersByScoreRange(
+            Long seasonId, double minScore, double maxScore
+    ) {
+        return redisTemplate.opsForZSet()
+                .reverseRangeByScoreWithScores(key(seasonId), minScore, maxScore);
+    }
+
+    public Long countByScoreRange(Long seasonId, double minScore, double maxScore) {
+        return redisTemplate.opsForZSet()
+                .count(key(seasonId), minScore, maxScore);
+    }
+
+    public Double getPercentileScore(Long seasonId, double percentile) {
+        Long total = redisTemplate.opsForZSet().zCard(key(seasonId));
+        if (total == null || total == 0) {
+            return null;
+        }
+
+        long rank = (long) Math.ceil(total * (percentile / 100.0)) - 1;
+        Set<ZSetOperations.TypedTuple<String>> result = redisTemplate.opsForZSet()
+                .reverseRangeWithScores(key(seasonId), rank, rank);
+
+        if (result == null || result.isEmpty()) {
+            return null;
+        }
+
+        return result.iterator().next().getScore();
+    }
 }

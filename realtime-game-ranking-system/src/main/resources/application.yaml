@@ -15,10 +15,6 @@ spring:
       host: localhost
       port: 6380
 
-  sql:
-    init:
-      mode: always
-
 redisson:
   single-server-config:
     address: "redis://localhost:6380"
