@@ -18,3 +18,5 @@ spring:
 notification:
   stream:
     key: "notification:stream"
+    group: "notification-group"
+    consumer: "consumer-1"

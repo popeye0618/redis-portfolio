@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-@Component
+//@Component
 @RequiredArgsConstructor
-public class NotificationConsumer {
+public class NotificationConsumerV1 {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final NotificationRepository notificationRepository;
@@ -58,7 +58,7 @@ public class NotificationConsumer {
             notification.markDelivered();
             notificationRepository.save(notification);
 
-            System.out.printf("[Consumer] 처리 완료 | ID: %s | userId: %d%n", messageId, userId);
+            System.out.printf("[ConsumerV1] 처리 완료 | ID: %s | userId: %d%n", messageId, userId);
 
             lastReadId = messageId;
         }
