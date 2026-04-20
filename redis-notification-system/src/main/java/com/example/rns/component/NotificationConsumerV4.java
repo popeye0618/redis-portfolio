@@ -14,9 +14,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-//@Component
+@Component
 @RequiredArgsConstructor
-public class NotificationConsumerV3 {
+public class NotificationConsumerV4 {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final NotificationRepository notificationRepository;
@@ -60,11 +60,14 @@ public class NotificationConsumerV3 {
         }
     }
 
-    private void process(MapRecord<String, Object, Object> record) {
+    public void process(MapRecord<String, Object, Object> record) {
         Map<Object, Object> fields = record.getValue();
         String messageId = record.getId().getValue();
 
         Long userId = Long.parseLong((String) fields.get("userId"));
+        if (userId == 99L) {
+            throw new RuntimeException("의도적 처리 실패 (PEL 재처리 테스트용)");
+        }
         String type = (String) fields.get("type");
         String msg = (String) fields.get("message");
 
