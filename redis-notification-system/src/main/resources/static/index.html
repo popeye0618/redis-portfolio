@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>실시간 알림 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: monospace; padding: 24px; background: #0a0c10; color: #e8eaf0; }
+        input, button { padding: 8px 12px; margin: 4px; border-radius: 4px; border: 1px solid #333; background: #111419; color: #e8eaf0; }
+        button { cursor: pointer; background: #4f9eff; color: #fff; border: none; }
+        #log { margin-top: 20px; padding: 16px; background: #111419; border-radius: 8px; min-height: 200px; }
+        .msg { padding: 6px 0; border-bottom: 1px solid #1a1e27; color: #3ecf8e; }
+    </style>
+</head>
+<body>
+<h2>실시간 알림 테스트</h2>
+
+<div>
+    <label>User ID: </label>
+    <input id="userId" type="number" value="1" style="width:60px">
+    <button onclick="connect()">연결</button>
+    <button onclick="disconnect()">연결 해제</button>
+    <span id="status" style="margin-left:12px;color:#7a8090;">연결 안됨</span>
+</div>
+
+<div id="log"><div style="color:#7a8090;">여기에 실시간 알림이 표시됩니다...</div></div>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const userId = document.getElementById('userId').value;
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;  // 콘솔 로그 숨김
+
+        stompClient.connect({}, () => {
+            document.getElementById('status').textContent = `userId:${userId} 연결됨`;
+            document.getElementById('status').style.color = '#3ecf8e';
+
+            // /topic/notifications/{userId} 구독
+            stompClient.subscribe(`/topic/notifications/${userId}`, (msg) => {
+                const log = document.getElementById('log');
+                const div = document.createElement('div');
+                div.className = 'msg';
+                div.textContent = `[${new Date().toLocaleTimeString()}] ${msg.body}`;
+                log.prepend(div);
+            });
+        });
+    }
+
+    function disconnect() {
+        if (stompClient) stompClient.disconnect();
+        document.getElementById('status').textContent = '연결 안됨';
+        document.getElementById('status').style.color = '#7a8090';
+    }
+</script>
+</body>
+</html>

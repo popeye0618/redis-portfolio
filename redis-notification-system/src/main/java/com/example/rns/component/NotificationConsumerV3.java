@@ -14,12 +14,13 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-//@Component
+@Component
 @RequiredArgsConstructor
-public class NotificationConsumerV2 {
+public class NotificationConsumerV3 {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final NotificationRepository notificationRepository;
+    private final NotificationPublisher publisher;
 
     @Value("${notification.stream.key}")
     private String streamKey;
@@ -79,7 +80,8 @@ public class NotificationConsumerV2 {
         notification.markDelivered();
         notificationRepository.save(notification);
 
-        System.out.printf("[ConsumerV2] 처리 완료 | ID: %s | userId: %d%n",
-                messageId, userId);
+        publisher.publish(userId, msg);
+
+        System.out.printf("[ConsumerV3] 처리 완료 | ID: %s | userId: %d%n", messageId, userId);
     }
 }
