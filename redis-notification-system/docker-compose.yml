@@ -1,0 +1,14 @@
+services:
+  mysql:
+    image: mysql:8.0
+    command: redis-server --notify-keyspace-events Ex
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: coupon_db
+    ports:
+      - "3306:3306"
+
+  redis:
+    image: redis:8.0
+    ports:
+      - "6380:6379"
