@@ -10,7 +10,7 @@
 - [핵심 설계 — 왜 DB가 아닌 Redis인가](#핵심-설계--왜-db가-아닌-redis인가)
 - [1주차 — 실시간 점수 등록 및 랭킹 조회](#1주차--실시간-점수-등록-및-랭킹-조회)
 - [2주차 — Sliding Window Rate Limiting](#2주차--sliding-window-rate-limiting)
-- [3주차 — 점수 범위 조회 및 구간별 랭킹](#3주차--점수-범위-조회-및-구간별-랭킹-예정)
+- [3주차 — 점수 범위 조회 및 구간별 랭킹](#3주차--점수-범위-조회-및-구간별-랭킹)
 - [4주차 — 시즌 종료 처리](#4주차--시즌-종료-처리-예정)
 - [성능 비교](#성능-비교)
 - [실행 방법](#실행-방법)
@@ -214,9 +214,81 @@ redis-cli PTTL ratelimit:v2:1
 
 ---
 
-## 3주차 — 점수 범위 조회 및 구간별 랭킹 (예정)
+## 3주차 — 점수 범위 조회 및 구간별 랭킹
 
-`ZRANGEBYSCORE`, `ZCOUNT`, `ZRANK` 활용한 구간 쿼리 구현 예정.
+### 주요 명령어
+
+| 기능 | 명령어 | 시간 복잡도 |
+|------|--------|-----------|
+| 점수 범위 조회 | `ZRANGEBYSCORE` | O(log N + M) |
+| 범위 내 인원 수 | `ZCOUNT` | O(log N) |
+| 퍼센타일 계산 | `ZREVRANK` + `ZCARD` | O(log N) |
+
+### 동작 확인
+
+**상위 3명 조회**
+
+```
+GET /api/ranking/seasons/1/top?topN=3
+
+[
+  { "rank": 1, "userId": 10, "score": 5000 },
+  { "rank": 2, "userId": 9,  "score": 4500 },
+  { "rank": 3, "userId": 8,  "score": 4000 }
+]
+```
+
+**점수 범위 조회 (2000~3000점)**
+
+```
+GET /api/ranking/seasons/1/range?minScore=2000&maxScore=3000
+
+[
+  { "rank": 1, "userId": 6, "score": 3000 },
+  { "rank": 2, "userId": 5, "score": 2500 },
+  { "rank": 3, "userId": 4, "score": 2000 }
+]
+```
+
+**내 퍼센타일 조회 (userId=3)**
+
+```
+GET /api/ranking/seasons/1/me/percentile?userId=3
+
+{
+  "rank": 8,
+  "totalParticipants": 10,
+  "topPercentile": 80.0
+}
+```
+
+> userId=3의 점수는 1500점으로 10명 중 8등.
+> 상위 80%라는 건 하위권임을 의미합니다.
+
+**상위 30% 커트라인**
+
+```
+GET /api/ranking/seasons/1/cutoff?percentile=30
+
+{
+  "percentile": 30.0,
+  "cutoffScore": 4000.0,
+  "qualifiedCount": 3
+}
+```
+
+> 상위 30% 진입을 위한 최소 점수는 4000점이며,
+> 현재 해당 점수 이상 인원은 3명입니다.
+
+**Redis CLI 직접 확인**
+
+```bash
+ZRANGEBYSCORE leaderboard:season:1 1000 3000 WITHSCORES
+# userId:2(1000), userId:3(1500), userId:4(2000), userId:5(2500), userId:6(3000)
+
+ZCOUNT leaderboard:season:1 1000 3000
+# 5
+```
 
 ---
 
